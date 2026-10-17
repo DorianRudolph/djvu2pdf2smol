@@ -16,3 +16,6 @@ openjp2.workspace = true
 [[bin]]
 name = "djvu2pdf"
 path = "src/bin/djvu2pdf.rs"
+
+[dev-dependencies]
+hayro-jbig2 = "0.3.1"

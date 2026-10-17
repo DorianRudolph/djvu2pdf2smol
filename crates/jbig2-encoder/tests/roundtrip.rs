@@ -282,3 +282,51 @@ impl NonEmpty for Bitmap {
         }
     }
 }
+
+/// Refinements wider/taller than their reference (positive reference offsets), in a
+/// dictionary and inline. hayro-jbig2 0.3.1 mis-decoded these (vendor/hayro-jbig2).
+#[test]
+fn refinement_with_reference_offset() {
+    let parent = Bitmap::from_fn(21, 30, |x, y| (x * 7 + y * 3) % 5 < 2 || x == 20);
+    let wider = Bitmap::from_fn(23, 31, |x, y| {
+        parent.get(x as i32 - 1, y as i32) != 0 || y == 30
+    });
+    let narrower = Bitmap::from_fn(19, 29, |x, y| parent.get(x as i32 + 1, y as i32 + 1) != 0);
+    let global = [
+        Shape {
+            bitmap: parent,
+            parent: None,
+        },
+        Shape {
+            bitmap: wider.clone(),
+            parent: Some(0),
+        },
+    ];
+    let local = [
+        Shape {
+            bitmap: Bitmap::from_fn(25, 32, |x, y| wider.get(x as i32 - 1, y as i32) != 0),
+            parent: Some(1),
+        },
+        Shape {
+            bitmap: narrower,
+            parent: Some(0),
+        },
+    ];
+    let page = Page::new(200, 100, 300);
+    let placements: Vec<Placement> = (0..4)
+        .map(|s| Placement {
+            shape: s,
+            x: 10 + 40 * s as i32,
+            y: 20,
+        })
+        .collect();
+    for options in [
+        EncodeOptions::default(),
+        EncodeOptions {
+            inline_refine: false,
+            ..Default::default()
+        },
+    ] {
+        check(&page, &global, &local, &placements, &options);
+    }
+}

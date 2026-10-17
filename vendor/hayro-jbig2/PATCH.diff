@@ -1,0 +1,15 @@
+--- a/src/decode/generic_refinement.rs
++++ b/src/decode/generic_refinement.rs
+@@ -259,10 +259,8 @@
+ 
+         let ref_x_signed = x as i32 - self.reference_dx;
+         if ref_x_signed < 0 {
+-            self.ref_cur_x = 0;
+-            self.ref_m1 = 0;
+-            self.ref_cur = 0;
+-            self.ref_p1 = 0;
++            // Keep the words `start_row` loaded at reference column 0: for x - dx = -1
++            // the context already includes reference column 0.
+         } else {
+             let ref_x = ref_x_signed as u32;
+ 

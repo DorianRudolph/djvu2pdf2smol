@@ -15,5 +15,7 @@
 //! Status: scaffolding. The reference implementation is the Python/C++ prototype
 //! described in README.md.
 
+pub mod mask;
+
 /// Crate version.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

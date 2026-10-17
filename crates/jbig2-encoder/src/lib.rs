@@ -139,6 +139,11 @@ impl Globals {
     pub fn is_empty(&self) -> bool {
         self.shapes.is_empty()
     }
+
+    /// Bitmap of global shape `index`.
+    pub fn shape(&self, index: usize) -> &Bitmap {
+        &self.shapes[index]
+    }
 }
 
 /// Statistics of one encoded page.
@@ -349,28 +354,42 @@ pub fn encode_page(
     for p in placements {
         uses[p.shape] += 1;
     }
-    let mut is_parent = vec![false; n];
-    for s in local.iter() {
-        if let Some(p) = s.parent {
-            is_parent[p] = true;
+    // needed local shapes: the placed ones and their local ancestors
+    let mut needed: Vec<bool> = uses.iter().map(|&u| u > 0).collect();
+    for i in (n_global..n).rev() {
+        if needed[i]
+            && let Some(p) = parent[i]
+        {
+            needed[p] = true;
         }
     }
 
     let mut stats = PageStats::default();
-    // local shapes: alias exact copies of global shapes, inline single-use refinements,
-    // put the rest into the page dictionaries
-    let mut inline = vec![false; n];
-    let mut dict_ids = Vec::new();
+    // alias exact copies of global shapes; encode the rest
+    let mut ids = Vec::new();
     for i in n_global..n {
         let bm = bitmaps[i];
-        if bm.is_empty() || (uses[i] == 0 && !is_parent[i]) {
+        if !needed[i] || bm.is_empty() {
             continue;
         }
         if let Some(&id) = globals.and_then(|g| g.by_content.get(bm)) {
             symbol_id[i] = Some(id);
             stats.aliased_shapes += 1;
-            continue;
+        } else {
+            ids.push(i);
         }
+    }
+    // single-use refinements that nothing refines from are coded inline in the text
+    // region; the rest go into the page dictionaries
+    let mut is_parent = vec![false; n];
+    for &i in &ids {
+        if let Some(p) = parent[i] {
+            is_parent[p] = true;
+        }
+    }
+    let mut inline = vec![false; n];
+    let mut dict_ids = Vec::new();
+    for i in ids {
         let usable_parent = parent[i].is_some_and(|p| !bitmaps[p].is_empty());
         if options.refine && options.inline_refine && uses[i] == 1 && !is_parent[i] && usable_parent
         {

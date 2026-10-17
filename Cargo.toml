@@ -22,3 +22,7 @@ openjp2 = { path = "vendor/openjp2/openjp2-rs", default-features = false, featur
 [profile.release]
 lto = true
 codegen-units = 1
+
+# Test-only: hayro-jbig2 with a refinement decoding fix (vendor/hayro-jbig2/PATCHED.md).
+[patch.crates-io]
+hayro-jbig2 = { path = "vendor/hayro-jbig2" }
