@@ -484,6 +484,17 @@ fn fmt_num(v: f64) -> String {
 
 /// Convert a DjVu document (bundled or single-page) to PDF, written to `out`.
 pub fn convert<W: Write>(data: &[u8], out: W, options: &Options) -> Result<(W, Stats), Error> {
+    convert_with_progress(data, out, options, |_, _| {})
+}
+
+/// [`convert`], calling `progress(pages_written, total_pages)` after each page is
+/// written (on the calling thread, pages in order).
+pub fn convert_with_progress<W: Write>(
+    data: &[u8],
+    out: W,
+    options: &Options,
+    mut progress: impl FnMut(usize, usize),
+) -> Result<(W, Stats), Error> {
     let doc = DjVuDocument::parse(data).map_err(|e| Error::Parse(e.to_string()))?;
     let npages = doc.page_count();
 
@@ -637,6 +648,7 @@ pub fn convert<W: Write>(data: &[u8], out: W, options: &Options) -> Result<(W, S
                     return;
                 }
                 want += 1;
+                progress(want, npages);
             }
         }
     });

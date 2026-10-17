@@ -1,9 +1,9 @@
-use std::io::BufWriter;
+use std::io::{BufWriter, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Instant;
 
-use djvu2pdf::convert::{LayerCoding, Options, convert};
+use djvu2pdf::convert::{LayerCoding, Options, convert_with_progress};
 use djvu2pdf::mask::MergeDicts;
 
 const USAGE: &str = "\
@@ -24,7 +24,8 @@ options:
   --no-refine            no JBIG2 refinement coding (larger, simpler streams)
   --search               per-page JBIG2 text-region parameter search (~0.1% smaller)
   --no-text, --no-outline, --no-links
-  -q, --quiet
+  -q, --quiet            no summary lines and no progress bar (the bar is shown
+                         only when stderr is a terminal)
   -h, --help";
 
 fn coding(s: &str) -> Result<LayerCoding, String> {
@@ -122,12 +123,87 @@ fn parse_args() -> Result<Args, String> {
     })
 }
 
-fn convert_file(src: &Path, dst: &Path, options: &Options) -> Result<String, String> {
+/// A one-line page progress bar on stderr, redrawn at most every 100 ms.
+struct Progress {
+    label: String,
+    start: Instant,
+    last: Option<Instant>,
+}
+
+impl Progress {
+    fn new(src: &Path) -> Self {
+        let name = src.file_name().unwrap_or_default().to_string_lossy();
+        let label: String = if name.chars().count() > 30 {
+            name.chars().take(29).chain(['…']).collect()
+        } else {
+            name.into_owned()
+        };
+        Self {
+            label,
+            start: Instant::now(),
+            last: None,
+        }
+    }
+
+    fn update(&mut self, done: usize, total: usize) {
+        let now = Instant::now();
+        if done < total
+            && self
+                .last
+                .is_some_and(|t| now.duration_since(t).as_millis() < 100)
+        {
+            return;
+        }
+        self.last = Some(now);
+        const WIDTH: usize = 30;
+        let filled = (done * WIDTH).checked_div(total).unwrap_or(WIDTH);
+        let secs = self.start.elapsed().as_secs_f64();
+        let rate = if secs > 0.0 { done as f64 / secs } else { 0.0 };
+        let eta = if rate > 0.0 && done < total {
+            format!(", {:.0}s left", (total - done) as f64 / rate)
+        } else {
+            String::new()
+        };
+        let mut err = std::io::stderr().lock();
+        let _ = write!(
+            err,
+            "\r\x1b[2K{} [{}{}] {done}/{total} pages, {rate:.0}/s{eta}",
+            self.label,
+            "#".repeat(filled),
+            "-".repeat(WIDTH - filled)
+        );
+        let _ = err.flush();
+    }
+
+    fn clear(&self) {
+        if self.last.is_some() {
+            let _ = write!(std::io::stderr(), "\r\x1b[2K");
+        }
+    }
+}
+
+fn convert_file(
+    src: &Path,
+    dst: &Path,
+    options: &Options,
+    show_progress: bool,
+) -> Result<String, String> {
     let t0 = Instant::now();
     let data = std::fs::read(src).map_err(|e| e.to_string())?;
     let tmp = dst.with_extension("pdf.part");
     let file = std::fs::File::create(&tmp).map_err(|e| format!("{}: {e}", tmp.display()))?;
-    let result = convert(&data, BufWriter::with_capacity(1 << 20, file), options);
+    let mut progress = Progress::new(src);
+    let result = convert_with_progress(
+        &data,
+        BufWriter::with_capacity(1 << 20, file),
+        options,
+        |done, total| {
+            if show_progress {
+                progress.update(done, total)
+            }
+        },
+    );
+    progress.clear();
     let (_, stats) = match result {
         Ok(r) => r,
         Err(e) => {
@@ -173,6 +249,7 @@ fn main() -> ExitCode {
         eprintln!("djvu2pdf: {}: {e}", args.output.display());
         return ExitCode::FAILURE;
     }
+    let show_progress = !args.quiet && std::io::stderr().is_terminal();
     let mut code = ExitCode::SUCCESS;
     for src in &args.inputs {
         let dst = if multi {
@@ -182,7 +259,7 @@ fn main() -> ExitCode {
         } else {
             args.output.clone()
         };
-        match convert_file(src, &dst, &args.options) {
+        match convert_file(src, &dst, &args.options, show_progress) {
             Ok(msg) if !args.quiet => println!("{}: {msg}", src.display()),
             Ok(_) => {}
             Err(e) => {
