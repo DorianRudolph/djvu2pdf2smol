@@ -37,19 +37,30 @@ fn main() {
     let start = std::time::Instant::now();
 
     // distinct shared dictionaries in first-use order, and each page's dictionary
+    // inline page dictionaries (Djbz in the page itself) are decoded here and kept alive
+    let inline: Vec<Option<djvu_jb2::Jb2Dict>> = (0..doc.page_count())
+        .map(|n| {
+            let page = doc.page(n).expect("page");
+            page.find_chunk(b"Djbz")
+                .map(|d| djvu_jb2::decode_dict(d, None).expect("decode Djbz"))
+        })
+        .collect();
+    // distinct dictionaries in first-use order, and each page's dictionary
     let mut keys: Vec<*const u8> = Vec::new();
     let mut dicts = Vec::new();
     let mut page_dict = Vec::new();
-    for n in 0..doc.page_count() {
+    for (n, own) in inline.iter().enumerate() {
         let page = doc.page(n).expect("page");
-        page_dict.push(page.shared_jb2_dict().map(|(raw, dict)| {
-            keys.iter()
-                .position(|&k| k == raw.as_ptr())
-                .unwrap_or_else(|| {
-                    keys.push(raw.as_ptr());
-                    dicts.push(dict);
-                    dicts.len() - 1
-                })
+        let entry = match own {
+            Some(d) => Some((d as *const djvu_jb2::Jb2Dict as *const u8, d)),
+            None => page.shared_jb2_dict().map(|(raw, d)| (raw.as_ptr(), d)),
+        };
+        page_dict.push(entry.map(|(key, dict)| {
+            keys.iter().position(|&k| k == key).unwrap_or_else(|| {
+                keys.push(key);
+                dicts.push(dict);
+                dicts.len() - 1
+            })
         }));
     }
     let shared = SharedDicts::new(&dicts, merge, &options);

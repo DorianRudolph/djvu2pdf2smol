@@ -16,18 +16,29 @@ instead:
 | TXTz hidden text | invisible text layer | yes (words + boxes) |
 | NAVM outline, ANTz links | bookmarks, link annotations | yes |
 
-A Python/C++ prototype of this design, benchmarked against `ddjvu`, dpsprep, OCRmyPDF,
-djvups/ps2pdf and djvu-rs's PDF exporter, reached **≈1.0–1.08× the DjVu size** on scanned
-books, photo-heavy scans and a born-digital thesis, with all masks bit-exact and pixel-exact
-bitonal rendering in MuPDF, pdf.js and Apple Preview. The best existing tools produced
-2.7–18× the DjVu size.
+## Results
+
+PDF size relative to the DjVu input, with default settings (`djvu2pdf` 0.1.0):
+
+| Test set | Files | DjVu | PDF | Total | Median per file |
+|---|---|---|---|---|---|
+| Scanned math books (151–980 pages each) | 9 | 51.7 MB | 53.8 MB | **+3.9 %** | +7.4 % |
+| djvu-rs test corpus (scans, colour books, maps, born-digital) | 32 | 40.8 MB | 41.8 MB | **+2.5 %** | +7.6 % |
+| Born-digital thesis (LaTeX, 151 pages) | 1 | 0.56 MB | 0.60 MB | **+6.3 %** | |
+
+Per book the range is −1.8 % to +11.1 %. Files under about 10 KB grow more in relative
+terms (a few hundred bytes of fixed PDF structure). Every JBIG2 mask decodes bit-exactly to
+the DjVu mask. Text, bookmarks and links are carried over, and every output passes
+`qpdf --check`. Converting all 9 books (4,276 pages) takes 12 s on 10 cores.
+
+For comparison: in an earlier benchmark on extracts of these test sets, the best other
+converter (dpsprep `-O3`) produced 2.7–5.4× the DjVu size, and
+`ddjvu -format=pdf` 4.9–18×.
 
 ## Status
 
-The CLI works. On the test corpora (9 scanned books, the djvu-rs fixtures, a born-digital
-thesis) every page converts and every JBIG2 mask decodes bit-exactly. Text, bookmarks and
-links match the Python/C++ prototype, and the books' sizes are within ±0.4 % of it. All 4,276 pages of
-the 9 books convert in about 13 s on 10 cores.
+The CLI and the web front end work. On the test sets above every page converts, and text,
+bookmarks and links match the earlier Python/C++ prototype.
 
 * [x] workspace, forks as submodules, wasm build of OpenJPEG
 * [x] `jbig2-encoder`: generic + refinement dictionaries, text regions, inline refinement,

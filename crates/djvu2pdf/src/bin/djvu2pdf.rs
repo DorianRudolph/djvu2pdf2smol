@@ -190,7 +190,9 @@ fn convert_file(
 ) -> Result<String, String> {
     let t0 = Instant::now();
     let data = std::fs::read(src).map_err(|e| e.to_string())?;
-    let tmp = dst.with_extension("pdf.part");
+    let mut tmp = dst.as_os_str().to_os_string();
+    tmp.push(".part");
+    let tmp = PathBuf::from(tmp);
     let file = std::fs::File::create(&tmp).map_err(|e| format!("{}: {e}", tmp.display()))?;
     let mut progress = Progress::new(src);
     let result = convert_with_progress(
@@ -253,9 +255,10 @@ fn main() -> ExitCode {
     let mut code = ExitCode::SUCCESS;
     for src in &args.inputs {
         let dst = if multi {
-            args.output
-                .join(src.file_stem().unwrap_or_default())
-                .with_extension("pdf")
+            // append rather than `with_extension`: stems may contain dots ("D. Pedoe")
+            let mut name = src.file_stem().unwrap_or_default().to_os_string();
+            name.push(".pdf");
+            args.output.join(name)
         } else {
             args.output.clone()
         };
