@@ -1,0 +1,9 @@
+{
+  "name": "djvu2pdf-web",
+  "private": true,
+  "description": "Static web front end for djvu2pdf; build with ./build.sh",
+  "license": "MIT OR Apache-2.0",
+  "dependencies": {
+    "pdfjs-dist": "4.10.38"
+  }
+}

@@ -591,68 +591,36 @@ pub fn convert_with_progress<W: Write>(
         ..Default::default()
     };
 
-    // pages: converted on worker threads, written in order
+    // pages: converted on worker threads (or inline with one job), written in order
+    progress(0, npages);
     let jobs = options.jobs.max(1).min(npages.max(1));
-    let next = AtomicUsize::new(0);
-    let failed = AtomicBool::new(false);
-    let mut result: Result<(), Error> = Ok(());
-    std::thread::scope(|s| {
-        let (tx, rx) = mpsc::channel::<(usize, Result<PageOut, String>)>();
-        for _ in 0..jobs {
-            let tx = tx.clone();
-            let (shared, next, failed) = (&shared, &next, &failed);
-            s.spawn(move || {
-                loop {
-                    let n = next.fetch_add(1, Ordering::Relaxed);
-                    if n >= npages || failed.load(Ordering::Relaxed) {
-                        break;
-                    }
-                    let r =
-                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| shared.page(n)))
-                            .unwrap_or_else(|_| Err("internal error (panic)".into()));
-                    if tx.send((n, r)).is_err() {
-                        break;
-                    }
-                }
-            });
-        }
-        drop(tx);
-        let mut ready: BTreeMap<usize, PageOut> = BTreeMap::new();
-        let mut want = 0;
-        for (n, r) in rx {
-            match r {
-                Ok(p) => {
-                    ready.insert(n, p);
-                }
-                Err(e) => {
-                    failed.store(true, Ordering::Relaxed);
-                    result = Err(Error::Page(n, e));
-                    break;
-                }
+    {
+        let mut write = |n: usize, p: PageOut| -> Result<(), Error> {
+            stats.compound_pages += p.compound as usize;
+            stats.text_pages += !p.fonts.is_empty() as usize;
+            stats.links += p.links.len();
+            write_page(
+                &mut pdf,
+                &p,
+                page_refs[n],
+                pages_root,
+                &page_refs,
+                &globals_refs,
+                &font_refs,
+            )?;
+            progress(n + 1, npages);
+            Ok(())
+        };
+        if jobs == 1 {
+            // no threads: also the path for wasm32, which has none
+            for n in 0..npages {
+                let p = shared.page(n).map_err(|e| Error::Page(n, e))?;
+                write(n, p)?;
             }
-            while let Some(p) = ready.remove(&want) {
-                stats.compound_pages += p.compound as usize;
-                stats.text_pages += !p.fonts.is_empty() as usize;
-                stats.links += p.links.len();
-                if let Err(e) = write_page(
-                    &mut pdf,
-                    &p,
-                    page_refs[want],
-                    pages_root,
-                    &page_refs,
-                    &globals_refs,
-                    &font_refs,
-                ) {
-                    failed.store(true, Ordering::Relaxed);
-                    result = Err(e.into());
-                    return;
-                }
-                want += 1;
-                progress(want, npages);
-            }
+        } else {
+            convert_parallel(&shared, npages, jobs, &mut write)?;
         }
-    });
-    result?;
+    }
 
     pdf.object(pages_root, |o| {
         let mut d = o.dict();
@@ -703,6 +671,56 @@ pub fn convert_with_progress<W: Write>(
     })?;
     let out = pdf.finish(catalog, Some(info))?;
     Ok((out, stats))
+}
+
+/// Convert pages on `jobs` threads; `write` receives them in page order.
+fn convert_parallel(
+    shared: &Shared,
+    npages: usize,
+    jobs: usize,
+    write: &mut dyn FnMut(usize, PageOut) -> Result<(), Error>,
+) -> Result<(), Error> {
+    let next = AtomicUsize::new(0);
+    let failed = AtomicBool::new(false);
+    std::thread::scope(|s| {
+        let (tx, rx) = mpsc::channel::<(usize, Result<PageOut, String>)>();
+        for _ in 0..jobs {
+            let tx = tx.clone();
+            let (next, failed) = (&next, &failed);
+            s.spawn(move || {
+                loop {
+                    let n = next.fetch_add(1, Ordering::Relaxed);
+                    if n >= npages || failed.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    let r =
+                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| shared.page(n)))
+                            .unwrap_or_else(|_| Err("internal error (panic)".into()));
+                    if tx.send((n, r)).is_err() {
+                        break;
+                    }
+                }
+            });
+        }
+        drop(tx);
+        let mut ready: BTreeMap<usize, PageOut> = BTreeMap::new();
+        let mut want = 0;
+        let result = (|| {
+            for (n, r) in &rx {
+                ready.insert(n, r.map_err(|e| Error::Page(n, e))?);
+                while let Some(p) = ready.remove(&want) {
+                    write(want, p)?;
+                    want += 1;
+                }
+            }
+            Ok(())
+        })();
+        if result.is_err() {
+            failed.store(true, Ordering::Relaxed);
+        }
+        drop(rx); // unblock workers still sending
+        result
+    })
 }
 
 fn write_fonts<W: Write>(pdf: &mut PdfFile<W>, fonts: &TextFonts) -> std::io::Result<Vec<Ref>> {

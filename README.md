@@ -36,7 +36,8 @@ the 9 books convert in about 13 s on 10 cores.
 * [x] converter + CLI: masks, backgrounds, foregrounds, palettes, text, outline, links,
       page-parallel with in-order streaming output
 * [ ] indirect (multi-file) documents
-* [ ] wasm front end
+* [x] web front end (`web/`): single-threaded wasm in a Web Worker, pdf.js preview,
+      everything served from the same origin (no CDN)
 
 Not supported: G4/MMR masks (`Smmr`) and JPEG-coded layers (`BGjp`/`FGjp`). These rare
 encodings did not appear in any test corpus or in a sample of Wikimedia Commons DjVu files;
@@ -62,7 +63,8 @@ crates/
   djvu2pdf/        converter library + `djvu2pdf` CLI
                    (mask.rs: JB2 -> JBIG2, jpx.rs: JPEG 2000, text.rs: text layer,
                    pdffile.rs: object/xref-stream writer, convert.rs: pages + document)
-  djvu2pdf-wasm/   WebAssembly entry points
+  djvu2pdf-wasm/   WebAssembly entry points (plain C ABI, no bindings generator)
+web/               static site: drop/choose a file, convert in a worker, preview, download
 vendor/            git submodules (forks)
   djvu-rs/         https://github.com/DorianRudolph/djvu-rs  — DjVu decoding (MIT)
   openjp2/         https://github.com/dorianrudolph/openjp2 (branch wasm32-support)
@@ -94,8 +96,11 @@ git clone --recursive https://github.com/DorianRudolph/djvu2pdf2smol
 cargo build --release
 cargo test
 rustup target add wasm32-unknown-unknown
-cargo build --release -p djvu2pdf-wasm --target wasm32-unknown-unknown
+web/build.sh                          # wasm + vendored pdf.js -> web/dist (needs npm)
+python3 -m http.server -d web/dist    # any static host works
 ```
+
+The web build produces the same PDF bytes as the CLI with `-j 1`.
 
 ## Test data
 

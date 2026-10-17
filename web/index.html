@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DjVu to PDF</title>
+<meta name="description" content="Convert DjVu documents to compact PDF in your browser.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<main>
+  <header>
+    <h1>DjVu to PDF</h1>
+    <p class="muted">Runs in your browser. Your file is not uploaded.</p>
+  </header>
+
+  <section id="drop" class="drop">
+    <input id="file" type="file" accept=".djvu,.djv,image/vnd.djvu,image/x-djvu" hidden>
+    <button id="choose" type="button">Choose DjVu file</button>
+    <span class="hint muted">or drop it here</span>
+  </section>
+
+  <section id="status" hidden>
+    <div class="line"><span id="name"></span><span id="count" class="muted"></span></div>
+    <progress id="bar"></progress>
+  </section>
+
+  <p id="error" role="alert" hidden></p>
+
+  <section id="result" class="line" hidden>
+    <span id="summary"></span>
+    <a id="download" class="button" download>Download PDF</a>
+  </section>
+
+  <div id="preview"></div>
+</main>
+</body>
+</html>
