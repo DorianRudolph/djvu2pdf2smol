@@ -1,0 +1,10 @@
+[package]
+name = "jbig2-encoder"
+description = "JBIG2 encoder for symbol dictionaries, refinement and text regions (PDF-embeddable streams)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]

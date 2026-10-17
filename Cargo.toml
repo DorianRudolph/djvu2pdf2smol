@@ -1,0 +1,24 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+# vendor/ holds git submodules (forks) that are their own workspaces
+exclude = ["vendor"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/DorianRudolph/djvu2pdf2smol"
+rust-version = "1.88"
+
+[workspace.dependencies]
+jbig2-encoder = { path = "crates/jbig2-encoder" }
+djvu2pdf = { path = "crates/djvu2pdf" }
+# forks, as submodules: see README.md for what each branch changes
+djvu-rs = { path = "vendor/djvu-rs", default-features = false, features = ["std"] }
+djvu-jb2 = { path = "vendor/djvu-rs/crates/djvu-jb2" }
+openjp2 = { path = "vendor/openjp2/openjp2-rs", default-features = false, features = ["c_api"] }
+
+[profile.release]
+lto = true
+codegen-units = 1

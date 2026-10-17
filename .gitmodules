@@ -1,0 +1,7 @@
+[submodule "vendor/djvu-rs"]
+	path = vendor/djvu-rs
+	url = https://github.com/DorianRudolph/djvu-rs.git
+[submodule "vendor/openjp2"]
+	path = vendor/openjp2
+	url = https://github.com/dorianrudolph/openjp2.git
+	branch = wasm32-support

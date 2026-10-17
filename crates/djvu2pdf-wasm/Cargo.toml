@@ -1,0 +1,15 @@
+[package]
+name = "djvu2pdf-wasm"
+description = "WebAssembly build of djvu2pdf for in-browser conversion"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+djvu2pdf.workspace = true

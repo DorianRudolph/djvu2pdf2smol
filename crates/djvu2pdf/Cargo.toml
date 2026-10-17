@@ -1,0 +1,18 @@
+[package]
+name = "djvu2pdf"
+description = "Convert DjVu to compact layered PDF: bit-exact JBIG2 masks, JPEG 2000 colour layers, text, outline, links"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+jbig2-encoder.workspace = true
+djvu-rs.workspace = true
+djvu-jb2.workspace = true
+openjp2.workspace = true
+
+[[bin]]
+name = "djvu2pdf"
+path = "src/bin/djvu2pdf.rs"

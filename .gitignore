@@ -1,0 +1,7 @@
+/target/
+# Never commit corpus data: test documents come from vendor/djvu-rs/tests (or are generated)
+*.djvu
+*.djv
+*.pdf
+!/vendor/**
+/corpus/
