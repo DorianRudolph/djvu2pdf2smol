@@ -46,7 +46,7 @@ has a few hundred bytes of fixed structure.
   (`cargo run --release --example mask_streams -- --verify FILE OUT`).
 * **Rendering** (sampled pages, MuPDF against `ddjvu`): bitonal, rotated and palette pages
   are pixel-identical. Colour pages reach 31–61 dB PSNR, equal to or better than the
-  Python/C++ prototype of the same design at the same size.
+  Python/C++ prototype of the same design (whose colour foregrounds had a 1× budget).
 * **Text, bookmarks, links:** identical to the prototype's output, except that control
   characters in OCR text are now dropped.
 * **Validity:** every output passes `qpdf --check`.
