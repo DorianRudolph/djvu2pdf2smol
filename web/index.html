@@ -6,6 +6,7 @@
 <title>DjVu to PDF</title>
 <meta name="description" content="Convert DjVu documents to compact PDF in your browser.">
 <link rel="icon" href="data:,">
+<link rel="stylesheet" href="pdfjs/pdf_viewer.css">
 <link rel="stylesheet" href="style.css">
 <script type="module" src="app.js"></script>
 </head>
@@ -34,7 +35,9 @@
     <a id="download" class="button" download>Download PDF</a>
   </section>
 
-  <div id="preview"></div>
+  <div id="preview" hidden>
+    <div id="viewerContainer"><div id="viewer" class="pdfViewer"></div></div>
+  </div>
 </main>
 </body>
 </html>

@@ -1,28 +1,40 @@
 import * as pdfjs from "./pdfjs/pdf.min.mjs";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "./pdfjs/pdf.worker.min.mjs";
+globalThis.pdfjsLib = pdfjs; // pdf_viewer.mjs reads the core library from here
+const { EventBus, PDFLinkService, PDFViewer } = await import("./pdfjs/pdf_viewer.mjs");
 
 const $ = (id) => document.getElementById(id);
 const drop = $("drop"), input = $("file"), status = $("status"), bar = $("bar");
 const result = $("result"), download = $("download"), preview = $("preview"), error = $("error");
 
-let worker = null, pdfDoc = null, observer = null, url = null;
+// one viewer for the page's lifetime; documents are swapped in and out
+const eventBus = new EventBus();
+const linkService = new PDFLinkService({ eventBus });
+const viewer = new PDFViewer({ container: $("viewerContainer"), viewer: $("viewer"), eventBus, linkService });
+linkService.setViewer(viewer);
+eventBus.on("pagesinit", () => (viewer.currentScaleValue = "page-width"));
+new ResizeObserver(() => {
+  if (viewer.pdfDocument) viewer.currentScaleValue = "page-width";
+}).observe($("viewerContainer"));
+
+let worker = null, pdfDoc = null, url = null, generation = 0;
 
 function formatSize(n) {
   return n >= 1 << 20 ? `${(n / (1 << 20)).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 }
 
 function reset() {
+  generation++;
   worker?.terminate();
   worker = null;
-  observer?.disconnect();
-  observer = null;
+  viewer.setDocument(null);
+  linkService.setDocument(null);
   pdfDoc?.destroy();
   pdfDoc = null;
   if (url) URL.revokeObjectURL(url);
   url = null;
-  preview.replaceChildren();
-  result.hidden = error.hidden = true;
+  preview.hidden = result.hidden = error.hidden = true;
 }
 
 function fail(message) {
@@ -58,7 +70,7 @@ async function start(file) {
   worker.postMessage({ data }, [data]);
 }
 
-function finish(file, pdf, stats) {
+async function finish(file, pdf, stats) {
   status.hidden = true;
   const name = file.name.replace(/\.(djvu?|djv)$/i, "") + ".pdf";
   url = URL.createObjectURL(new Blob([pdf], { type: "application/pdf" }));
@@ -66,64 +78,14 @@ function finish(file, pdf, stats) {
   download.download = name;
   $("summary").textContent = `${stats.pages} page${stats.pages === 1 ? "" : "s"} · ${formatSize(pdf.byteLength)}`;
   result.hidden = false;
-  showPreview(pdf.slice(0)); // pdf.js takes ownership of its copy
-}
 
-async function showPreview(data) {
-  const doc = await pdfjs.getDocument({ data, isEvalSupported: false }).promise;
-  if (url === null) return doc.destroy(); // a newer file was dropped meanwhile
+  const gen = generation;
+  const doc = await pdfjs.getDocument({ data: pdf.slice(0), isEvalSupported: false }).promise;
+  if (gen !== generation) return doc.destroy(); // a newer file was chosen meanwhile
   pdfDoc = doc;
-  const pages = [];
-  for (let i = 1; i <= doc.numPages; i++) pages.push(doc.getPage(i));
-  const slots = [];
-  for (const [i, p] of (await Promise.all(pages)).entries()) {
-    const vp = p.getViewport({ scale: 1 });
-    const slot = document.createElement("div");
-    slot.className = "page";
-    slot.style.aspectRatio = `${vp.width} / ${vp.height}`;
-    slot.dataset.index = i;
-    slot.page = p;
-    slots.push(slot);
-  }
-  if (pdfDoc !== doc) return;
-  preview.replaceChildren(...slots);
-  observer = new IntersectionObserver(onVisibility, { rootMargin: "150% 0px" });
-  slots.forEach((s) => observer.observe(s));
-}
-
-function onVisibility(entries) {
-  for (const { target: slot, isIntersecting } of entries) {
-    if (isIntersecting) render(slot);
-    else release(slot);
-  }
-}
-
-async function render(slot) {
-  if (slot.canvas) return;
-  const canvas = document.createElement("canvas");
-  slot.canvas = canvas;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const base = slot.page.getViewport({ scale: 1 });
-  const viewport = slot.page.getViewport({ scale: (slot.clientWidth * dpr) / base.width });
-  canvas.width = Math.floor(viewport.width);
-  canvas.height = Math.floor(viewport.height);
-  slot.task = slot.page.render({ canvasContext: canvas.getContext("2d"), viewport });
-  try {
-    await slot.task.promise;
-    if (slot.canvas === canvas) slot.replaceChildren(canvas);
-  } catch {
-    // cancelled: the page scrolled out of range
-  }
-}
-
-function release(slot) {
-  slot.task?.cancel();
-  slot.task = null;
-  if (slot.canvas) {
-    slot.canvas.width = slot.canvas.height = 0; // free the bitmap now
-    slot.canvas = null;
-  }
-  slot.replaceChildren();
+  preview.hidden = false;
+  viewer.setDocument(doc);
+  linkService.setDocument(doc);
 }
 
 function accept(files) {

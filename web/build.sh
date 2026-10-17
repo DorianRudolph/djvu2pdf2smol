@@ -11,4 +11,5 @@ cp index.html style.css app.js convert-worker.js dist/
 cp ../target/wasm32-unknown-unknown/release/djvu2pdf_wasm.wasm dist/djvu2pdf.wasm
 pdfjs=node_modules/pdfjs-dist
 cp "$pdfjs/legacy/build/pdf.min.mjs" "$pdfjs/legacy/build/pdf.worker.min.mjs" "$pdfjs/LICENSE" dist/pdfjs/
+cp -R "$pdfjs/legacy/web/pdf_viewer.mjs" "$pdfjs/legacy/web/pdf_viewer.css" "$pdfjs/legacy/web/images" dist/pdfjs/
 echo "built web/dist"

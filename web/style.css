@@ -99,10 +99,22 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 3px
 progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
 #error { color: var(--error); overflow-wrap: anywhere; }
 
-#preview { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
-.page {
-  width: 100%;
-  background: #ffffff;
+/* pdf.js viewer: a fixed-height box that scrolls inside itself */
+#preview {
+  position: relative;
+  height: 75vh;
+  height: 75dvh;
+  margin-top: 20px;
   border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--well);
 }
-.page canvas { display: block; width: 100%; height: 100%; }
+#viewerContainer {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#viewer.pdfViewer { padding: 8px 0; }
+#viewer.pdfViewer .page { border: 0; margin: 0 auto 8px; box-shadow: 0 0 0 1px var(--border); }
