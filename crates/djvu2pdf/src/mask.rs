@@ -146,8 +146,119 @@ impl SharedDicts {
     }
 }
 
-/// Encode one page's JB2 mask (Sjbz). `dict` is the page's shared dictionary, `globals`
-/// its encoding from [`SharedDicts::page_globals`].
+/// One page's JB2 mask, decoded into shapes and placements ready for JBIG2 encoding.
+pub struct PageMask<'a> {
+    globals: Option<PageGlobals<'a>>,
+    width: u32,
+    height: u32,
+    local: Vec<Shape>,
+    /// Per JB2 blit, in blit order (the FGbz colour index order); `None` = empty shape.
+    placements: Vec<Option<Placement>>,
+}
+
+impl<'a> PageMask<'a> {
+    /// Decode a page's Sjbz. `dict` is the page's shared dictionary, `globals` its
+    /// encoding from [`SharedDicts::page_globals`].
+    pub fn new(
+        sjbz: &[u8],
+        dict: Option<&Jb2Dict>,
+        globals: Option<PageGlobals<'a>>,
+    ) -> Result<Self, Jb2Error> {
+        let structure = decode_structure(sjbz, dict)?;
+        let inherited = structure.inherited;
+        let n_global = globals.map_or(0, |g| g.globals.len());
+        let map = globals.and_then(|g| g.map).unwrap_or(&[]);
+        // page shape index → combined (global, then local) index; None = empty
+        let remap = |s: usize| -> Option<usize> {
+            match s.checked_sub(inherited) {
+                Some(i) => Some(n_global + i),
+                None => map.get(s).copied().flatten(),
+            }
+        };
+        let local: Vec<Shape> = structure
+            .shapes
+            .iter()
+            .map(|s| Shape {
+                bitmap: to_bitmap(&s.bitmap),
+                parent: s.parent.and_then(remap),
+            })
+            .collect();
+        let height_of = |shape: usize| -> i32 {
+            match shape.checked_sub(n_global) {
+                Some(i) => local[i].bitmap.height() as i32,
+                None => globals.map_or(0, |g| g.globals.shape(shape).height() as i32),
+            }
+        };
+        let page_height = structure.height as i32;
+        let placements = structure
+            .blits
+            .iter()
+            .map(|b| {
+                let shape = remap(b.shape)?;
+                Some(Placement {
+                    shape,
+                    x: b.left,
+                    y: page_height - b.bottom - height_of(shape),
+                })
+            })
+            .collect();
+        Ok(Self {
+            globals,
+            width: structure.width,
+            height: structure.height,
+            local,
+            placements,
+        })
+    }
+
+    /// Mask width in pixels (the page width).
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    /// Mask height in pixels (the page height).
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    /// Number of JB2 blits.
+    pub fn blit_count(&self) -> usize {
+        self.placements.len()
+    }
+
+    /// Encode the blits selected by `select(blit index)` as a JBIG2 page of
+    /// `canvas_width` x `canvas_height` pixels (at least the mask size), the mask
+    /// sitting in its bottom-left corner — e.g. padded to cover a coarser colour layer.
+    pub fn encode(
+        &self,
+        canvas_width: u32,
+        canvas_height: u32,
+        dpi: u32,
+        select: impl Fn(usize) -> bool,
+        options: &EncodeOptions,
+    ) -> EncodedPage {
+        let (w, h) = (canvas_width.max(self.width), canvas_height.max(self.height));
+        let mut page = Page::new(w, h, dpi);
+        page.region = (0, h - self.height, self.width, self.height);
+        let placements: Vec<Placement> = self
+            .placements
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| select(i))
+            .filter_map(|(_, p)| *p)
+            .collect();
+        encode_page(
+            &page,
+            self.globals.map(|g| g.globals),
+            &self.local,
+            &placements,
+            options,
+        )
+    }
+}
+
+/// Encode one page's JB2 mask (Sjbz) as a whole-page JBIG2 stream. `dict` is the page's
+/// shared dictionary, `globals` its encoding from [`SharedDicts::page_globals`].
 pub fn encode_mask(
     sjbz: &[u8],
     dict: Option<&Jb2Dict>,
@@ -155,50 +266,6 @@ pub fn encode_mask(
     dpi: u32,
     options: &EncodeOptions,
 ) -> Result<EncodedPage, Jb2Error> {
-    let structure = decode_structure(sjbz, dict)?;
-    let inherited = structure.inherited;
-    let n_global = globals.map_or(0, |g| g.globals.len());
-    let map = globals.and_then(|g| g.map).unwrap_or(&[]);
-    // page shape index → combined (global, then local) index; None = empty
-    let remap = |s: usize| -> Option<usize> {
-        match s.checked_sub(inherited) {
-            Some(i) => Some(n_global + i),
-            None => map.get(s).copied().flatten(),
-        }
-    };
-    let local: Vec<Shape> = structure
-        .shapes
-        .iter()
-        .map(|s| Shape {
-            bitmap: to_bitmap(&s.bitmap),
-            parent: s.parent.and_then(remap),
-        })
-        .collect();
-    let height_of = |shape: usize| -> i32 {
-        match shape.checked_sub(n_global) {
-            Some(i) => local[i].bitmap.height() as i32,
-            None => globals.map_or(0, |g| g.globals.shape(shape).height() as i32),
-        }
-    };
-    let page_height = structure.height as i32;
-    let placements: Vec<Placement> = structure
-        .blits
-        .iter()
-        .filter_map(|b| {
-            let shape = remap(b.shape)?;
-            Some(Placement {
-                shape,
-                x: b.left,
-                y: page_height - b.bottom - height_of(shape),
-            })
-        })
-        .collect();
-    let page = Page::new(structure.width, structure.height, dpi);
-    Ok(encode_page(
-        &page,
-        globals.map(|g| g.globals),
-        &local,
-        &placements,
-        options,
-    ))
+    let mask = PageMask::new(sjbz, dict, globals)?;
+    Ok(mask.encode(mask.width, mask.height, dpi, |_| true, options))
 }

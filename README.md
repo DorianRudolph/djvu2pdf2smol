@@ -24,14 +24,34 @@ bitonal rendering in MuPDF, pdf.js and Apple Preview. The best existing tools pr
 
 ## Status
 
-Early: the repository is being set up and the prototype ported.
+The CLI works. On the test corpora (9 scanned books, the djvu-rs fixtures, a born-digital
+thesis) every page converts and every JBIG2 mask decodes bit-exactly. Text, bookmarks and
+links match the Python/C++ prototype, and the books' sizes are within ±0.4 % of it. All 4,276 pages of
+the 9 books convert in about 13 s on 10 cores.
 
 * [x] workspace, forks as submodules, wasm build of OpenJPEG
-* [~] `jbig2-encoder`: MQ / integer / symbol-ID coders done; regions, dictionaries, text
-      regions, segment writer to do
-* [ ] JB2 structure API in the djvu-rs fork (shapes with parents, blits, dictionaries)
-* [ ] converter: masks, backgrounds, foregrounds, text, outline, links, verification
+* [x] `jbig2-encoder`: generic + refinement dictionaries, text regions, inline refinement,
+      global aliasing, decoder-compatibility rules
+* [x] JB2 structure API in the djvu-rs fork
+* [x] converter + CLI: masks, backgrounds, foregrounds, palettes, text, outline, links,
+      page-parallel with in-order streaming output
+* [ ] indirect (multi-file) documents
 * [ ] wasm front end
+
+Not supported: G4/MMR masks (`Smmr`) and JPEG-coded layers (`BGjp`/`FGjp`). These rare
+encodings did not appear in any test corpus or in a sample of Wikimedia Commons DjVu files;
+such pages are rejected with an error rather than converted with the layer missing.
+
+## Usage
+
+```sh
+djvu2pdf book.djvu -o book.pdf
+djvu2pdf books/ -o pdfs/              # every *.djvu in a directory
+djvu2pdf --help
+```
+
+Defaults: bit-exact masks, background JPEG 2000 at 1× and foreground at 2× the bytes DjVu
+spent on that layer (`--bg rate:F|lossless`, `--fg ...`), all cores (`-j N`).
 
 ## Layout
 
@@ -40,6 +60,8 @@ crates/
   jbig2-encoder/   JBIG2 encoder for PDF-embeddable streams (symbol dictionaries,
                    refinement, text regions); input = shapes + placements, no DjVu knowledge
   djvu2pdf/        converter library + `djvu2pdf` CLI
+                   (mask.rs: JB2 -> JBIG2, jpx.rs: JPEG 2000, text.rs: text layer,
+                   pdffile.rs: object/xref-stream writer, convert.rs: pages + document)
   djvu2pdf-wasm/   WebAssembly entry points
 vendor/            git submodules (forks)
   djvu-rs/         https://github.com/DorianRudolph/djvu-rs  — DjVu decoding (MIT)
@@ -54,8 +76,14 @@ vendor/            git submodules (forks)
   codestream comment with `opj_malloc` (it was a `CString` released with C `free` —
   undefined behaviour, aborts on wasm); compiles the `fprintf` module without `file-io`.
   Result: a JPEG 2000 encoder in wasm with zero imports, byte-identical to native.
-* **djvu-rs**: planned — expose the JB2 structure (shape bitmaps with parent indices,
-  blits, shared dictionaries) that `djvu-jb2` already computes while decoding.
+* **openjp2** also builds without warnings when `file-io` is off.
+* **djvu-rs** (`jb2-structure-api`): `djvu_jb2::decode_structure` gives the shapes (cropped
+  bitmaps with refinement parents) and blits of a JB2 image, and `Jb2Dict::shape` does the
+  same for dictionaries. It also adds `DjVuPage::shared_jb2_dict` (the INCL'd Djbz) and
+  `DjVuPage::foreground_palette` (FGbz), and makes `Iw44Image::is_color` public.
+* **vendor/hayro-jbig2** (not a fork; a dev-dependency only): a patched copy of
+  hayro-jbig2 0.3.1. It fixes refinement decoding with a positive reference x offset and
+  is used to verify the encoder in tests. See `vendor/hayro-jbig2/PATCHED.md`.
 
 Both are meant to go upstream.
 

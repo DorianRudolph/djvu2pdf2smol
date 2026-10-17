@@ -12,6 +12,8 @@ jbig2-encoder.workspace = true
 djvu-rs.workspace = true
 djvu-jb2.workspace = true
 openjp2.workspace = true
+pdf-writer = "0.15.0"
+miniz_oxide = "0.9.1"
 
 [[bin]]
 name = "djvu2pdf"
