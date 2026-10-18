@@ -4,6 +4,7 @@
   --muted: #6e6e73;
   --border: #d2d2d7;
   --accent: #0a62d0;
+  --accent-hover: #0853b3;
   --accent-fg: #ffffff;
   --well: #f2f2f4;
   --error: #b3261e;
@@ -16,6 +17,7 @@
     --muted: #a1a1a6;
     --border: #3a3a3e;
     --accent: #4c9bff;
+    --accent-hover: #6aacff;
     --accent-fg: #0b0b0c;
     --well: #222225;
     --error: #ff8a80;
@@ -27,24 +29,39 @@
   --muted: #a1a1a6;
   --border: #3a3a3e;
   --accent: #4c9bff;
+  --accent-hover: #6aacff;
   --accent-fg: #0b0b0c;
   --well: #222225;
   --error: #ff8a80;
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
-main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
-h1 { font-size: 1.5rem; font-weight: 600; margin: 0; }
+[hidden] { display: none !important; }
+
+main { max-width: 860px; margin: 0 auto; padding: 32px 16px 48px; }
+h1 { font-size: 1.5rem; font-weight: 600; line-height: 1.25; margin: 0; }
 header p { margin: 4px 0 24px; }
 .muted { color: var(--muted); }
-[hidden] { display: none !important; }
+
+/* links: one colour in every state (no visited/active colour changes) */
+a,
+a:visited,
+a:active {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { text-decoration-thickness: 2px; }
+a:focus-visible,
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
 .drop {
   display: flex;
@@ -61,8 +78,12 @@ header p { margin: 4px 0 24px; }
 .drop.over { border-color: var(--accent); background: var(--well); }
 @media (pointer: coarse) { .hint { display: none; } }
 
-button, .button {
+button,
+a.button,
+a.button:visited,
+a.button:active {
   appearance: none;
+  display: inline-block;
   border: 0;
   border-radius: 8px;
   padding: 10px 18px;
@@ -70,13 +91,15 @@ button, .button {
   color: var(--accent-fg);
   font: inherit;
   font-weight: 500;
+  line-height: 1.5;
   text-decoration: none;
-  cursor: pointer;
   white-space: nowrap;
+  cursor: pointer;
 }
-button:focus-visible, .button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:hover,
+a.button:hover { background: var(--accent-hover); }
 
-#status, #result, #error { margin-top: 20px; }
+#status, #result, #error { margin-top: 24px; }
 .line {
   display: flex;
   flex-wrap: wrap;
@@ -86,6 +109,7 @@ button:focus-visible, .button:focus-visible { outline: 2px solid var(--accent); 
 }
 #name { overflow-wrap: anywhere; min-width: 0; }
 progress {
+  display: block;
   width: 100%;
   height: 6px;
   margin-top: 8px;
@@ -99,28 +123,27 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 3px
 progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
 #error { color: var(--error); overflow-wrap: anywhere; }
 
-footer { margin-top: 32px; font-size: 0.875rem; }
-footer a, .legal a { color: var(--muted); }
-.legal h1 { margin-bottom: 16px; }
-.legal h2 { font-size: 1.125rem; font-weight: 600; margin: 28px 0 8px; }
-.legal p { margin: 0 0 12px; }
-
-/* pdf.js viewer: a fixed-height box that scrolls inside itself */
+/* the pdf.js viewer app */
 #preview {
-  position: relative;
-  height: 75vh;
-  height: 75dvh;
-  margin-top: 20px;
+  display: block;
+  width: 100%;
+  height: 80vh;
+  height: 80dvh;
+  margin-top: 24px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow: hidden;
-  background: var(--well);
 }
-#viewerContainer {
-  position: absolute;
-  inset: 0;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+
+footer {
+  margin-top: 56px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+  color: var(--muted);
 }
-#viewer.pdfViewer { padding: 8px 0; }
-#viewer.pdfViewer .page { border: 0; margin: 0 auto 8px; box-shadow: 0 0 0 1px var(--border); }
+
+/* legal page */
+.legal .back { margin: 0 0 32px; font-size: 0.875rem; color: var(--muted); }
+.legal h1 { margin-bottom: 20px; }
+.legal h2 { font-size: 1.125rem; font-weight: 600; margin: 40px 0 12px; }
+.legal p { margin: 0 0 16px; }

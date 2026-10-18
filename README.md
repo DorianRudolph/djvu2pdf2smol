@@ -50,12 +50,12 @@ an error. These encodings are rare; none of the test files used them.
 ## Web version
 
 `web/` is a static page: choose or drop a DjVu file, it converts in a background worker,
-and the result appears in a pdf.js preview with a download button. Nothing is uploaded, and
+and the result opens in the pdf.js viewer with a download button. Nothing is uploaded, and
 all files are served from the site itself.
 
 ```sh
 rustup target add wasm32-unknown-unknown
-web/build.sh                          # builds web/dist (needs npm for pdf.js)
+web/build.sh                          # builds web/dist (downloads the pinned pdf.js release)
 python3 -m http.server -d web/dist    # or any static host
 web/deploy-pages.sh                   # publish to the `pages` branch (GitHub Pages)
 ```
