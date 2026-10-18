@@ -99,6 +99,12 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 3px
 progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
 #error { color: var(--error); overflow-wrap: anywhere; }
 
+footer { margin-top: 32px; font-size: 0.875rem; }
+footer a, .legal a { color: var(--muted); }
+.legal h1 { margin-bottom: 16px; }
+.legal h2 { font-size: 1.125rem; font-weight: 600; margin: 28px 0 8px; }
+.legal p { margin: 0 0 12px; }
+
 /* pdf.js viewer: a fixed-height box that scrolls inside itself */
 #preview {
   position: relative;
