@@ -55,6 +55,7 @@ all files are served from the site itself.
 
 ```sh
 rustup target add wasm32-unknown-unknown
+cargo install --locked cargo-about --features cli   # generates the licenses page
 web/build.sh                          # builds web/dist (downloads the pinned pdf.js release)
 python3 -m http.server -d web/dist    # or any static host
 web/deploy-pages.sh                   # publish to the `pages` branch (GitHub Pages)

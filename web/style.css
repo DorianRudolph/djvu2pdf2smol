@@ -143,8 +143,22 @@ footer {
   color: var(--muted);
 }
 
-/* legal page */
+/* legal and licenses pages */
 .legal .back { margin: 0 0 32px; font-size: 0.875rem; color: var(--muted); }
 .legal h1 { margin-bottom: 20px; }
 .legal h2 { font-size: 1.125rem; font-weight: 600; margin: 40px 0 12px; }
 .legal p { margin: 0 0 16px; }
+.licenses-overview { margin: 0 0 16px; padding-left: 20px; }
+.license h3 { font-size: 1rem; font-weight: 600; margin: 32px 0 4px; }
+.license .used-by { font-size: 0.875rem; color: var(--muted); overflow-wrap: anywhere; }
+.license pre {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  background: var(--well);
+  border-radius: 8px;
+}

@@ -1,0 +1,82 @@
+# cargo-about configuration for licenses.html (web/build.sh): the crates compiled into the
+# wasm module. Where a crate offers a choice, the first license in this list is used.
+accepted = ["MIT", "Apache-2.0", "BSD-2-Clause", "Zlib", "Unicode-3.0", "BSL-1.0", "0BSD", "Unlicense"]
+targets = ["wasm32-unknown-unknown"]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+
+# OpenJPEG's license file is a C comment, which the license detector does not recognize;
+# use that file as is (the checksum pins its exact text)
+[openjp2.clarify]
+license = "BSD-2-Clause"
+
+[[openjp2.clarify.files]]
+path = "LICENSE"
+license = "BSD-2-Clause"
+checksum = "a6af136f3e15038a666b61f376612a07d9a4e48cb7c01adbf3e33b3f14ab49b6"
+
+# Sub-crates of djvu-rs carry no license file of their own; use the repository root LICENSE
+[djvu-bitmap.clarify]
+license = "MIT"
+
+[[djvu-bitmap.clarify.files]]
+path = "../../LICENSE"
+license = "MIT"
+checksum = "9b634d974fb7ccacccc877fa6b36016eb48884b09732485d7ad92b6294699163"
+
+[djvu-bzz.clarify]
+license = "MIT"
+
+[[djvu-bzz.clarify.files]]
+path = "../../LICENSE"
+license = "MIT"
+checksum = "9b634d974fb7ccacccc877fa6b36016eb48884b09732485d7ad92b6294699163"
+
+[djvu-iff.clarify]
+license = "MIT"
+
+[[djvu-iff.clarify.files]]
+path = "../../LICENSE"
+license = "MIT"
+checksum = "9b634d974fb7ccacccc877fa6b36016eb48884b09732485d7ad92b6294699163"
+
+[djvu-iw44.clarify]
+license = "MIT"
+
+[[djvu-iw44.clarify.files]]
+path = "../../LICENSE"
+license = "MIT"
+checksum = "9b634d974fb7ccacccc877fa6b36016eb48884b09732485d7ad92b6294699163"
+
+[djvu-jb2.clarify]
+license = "MIT"
+
+[[djvu-jb2.clarify.files]]
+path = "../../LICENSE"
+license = "MIT"
+checksum = "9b634d974fb7ccacccc877fa6b36016eb48884b09732485d7ad92b6294699163"
+
+[djvu-pixmap.clarify]
+license = "MIT"
+
+[[djvu-pixmap.clarify.files]]
+path = "../../LICENSE"
+license = "MIT"
+checksum = "9b634d974fb7ccacccc877fa6b36016eb48884b09732485d7ad92b6294699163"
+
+[djvu-zp.clarify]
+license = "MIT"
+
+[[djvu-zp.clarify.files]]
+path = "../../LICENSE"
+license = "MIT"
+checksum = "9b634d974fb7ccacccc877fa6b36016eb48884b09732485d7ad92b6294699163"
+
+# wide ships only its Zlib license file (with its copyright notice)
+[wide.clarify]
+license = "Zlib"
+
+[[wide.clarify.files]]
+path = "LICENSE-ZLIB.md"
+license = "Zlib"
+checksum = "c43b9a9b1387ed53d2c49263838261129a010e280e3a174a792242c3e2c98db9"

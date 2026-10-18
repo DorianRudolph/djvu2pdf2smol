@@ -10,6 +10,10 @@ PDFJS_SHA256=c85b52b94e081c0443333da0ba4270661b2061da573133984c6272fe3e27bb57
 PDFJS_ZIP=.cache/pdfjs-$PDFJS_VERSION-legacy-dist.zip
 
 cargo build --release --target wasm32-unknown-unknown -p djvu2pdf-wasm
+command -v cargo-about >/dev/null || {
+  echo "build.sh: needs cargo-about for licenses.html: cargo install --locked cargo-about --features cli" >&2
+  exit 1
+}
 
 if [ ! -f "$PDFJS_ZIP" ]; then
   mkdir -p .cache
@@ -23,8 +27,14 @@ rm -rf dist
 mkdir -p dist
 cp index.html legal.html style.css app.js convert-worker.js dist/
 cp ../target/wasm32-unknown-unknown/release/djvu2pdf_wasm.wasm dist/djvu2pdf.wasm
+# license notices of everything compiled into the wasm module (about.toml, about.hbs), and
+# the Rust standard library's notices as shipped with the toolchain
+cargo about generate --frozen -c about.toml --manifest-path ../crates/djvu2pdf-wasm/Cargo.toml \
+  about.hbs -o dist/licenses.html
+cp "$(rustc --print sysroot)/share/doc/rust/COPYRIGHT-library.html" dist/rust-std-licenses.html
 # the viewer app without source maps, debugger, sample document, CJK cmaps and standard
 # fonts (our PDFs embed their only font)
 unzip -q "$PDFJS_ZIP" -d dist/pdfjs \
   -x '*.map' 'web/debugger.*' 'web/*.pdf' 'web/cmaps/*' 'web/standard_fonts/*'
+cp dist/pdfjs/LICENSE dist/pdfjs/LICENSE.txt # served as text (no extension = download)
 echo "built web/dist"
