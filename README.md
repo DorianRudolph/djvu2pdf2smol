@@ -57,6 +57,7 @@ all files are served from the site itself.
 rustup target add wasm32-unknown-unknown
 web/build.sh                          # builds web/dist (needs npm for pdf.js)
 python3 -m http.server -d web/dist    # or any static host
+web/deploy-pages.sh                   # publish to the `pages` branch (GitHub Pages)
 ```
 
 ## Building from source
