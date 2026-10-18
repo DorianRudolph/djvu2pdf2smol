@@ -1,12 +1,12 @@
 #!/bin/sh
-# Build the web version and publish it as a commit on the `pages` branch, which GitHub Pages
-# serves (Settings -> Pages -> Deploy from a branch -> pages, / (root)).
+# Build the web version and publish it as the `pages` branch, which GitHub Pages serves
+# (Settings -> Pages -> Deploy from a branch -> pages, / (root)).
 #
-#   web/deploy-pages.sh            build, commit to `pages`, push
-#   web/deploy-pages.sh --no-push  build and commit only
+#   web/deploy-pages.sh            build, replace `pages` with one fresh commit, force-push
+#   web/deploy-pages.sh --no-push  build and update the local branch only
 #
-# The branch holds only the built site (web/dist); each deployment is one commit on top of
-# the previous one, referencing the source commit it was built from.
+# The branch holds only the built site (web/dist) in a single commit without history, so
+# old builds do not accumulate in the repository.
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -20,31 +20,18 @@ fi
 source_rev=$(git rev-parse --short HEAD)
 
 web/build.sh
+touch web/dist/.nojekyll # serve files as they are, no Jekyll processing
 
-worktree=$(mktemp -d)
-trap 'git worktree remove --force "$worktree" 2>/dev/null || true; rm -rf "$worktree"' EXIT
+# commit web/dist as a root commit, using a throwaway index
+index=$(mktemp)
+trap 'rm -f "$index"' EXIT
+rm -f "$index"
+GIT_INDEX_FILE="$index" git --work-tree=web/dist add -A .
+tree=$(GIT_INDEX_FILE="$index" git write-tree)
+commit=$(git commit-tree "$tree" -m "Deploy web version built from $source_rev")
+git update-ref refs/heads/pages "$commit"
+echo "deploy-pages: pages -> $(git rev-parse --short "$commit") (built from $source_rev)"
 
-if git show-ref --verify --quiet refs/heads/pages; then
-  git worktree add --quiet "$worktree" pages
-elif git ls-remote --exit-code --heads origin pages >/dev/null 2>&1; then
-  git fetch --quiet origin pages:pages
-  git worktree add --quiet "$worktree" pages
-else
-  git worktree add --quiet --orphan -b pages "$worktree"
-fi
-
-# replace the branch contents with the fresh build
-find "$worktree" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-cp -R web/dist/. "$worktree/"
-touch "$worktree/.nojekyll" # serve files as they are, no Jekyll processing
-
-git -C "$worktree" add -A
-if git -C "$worktree" diff --cached --quiet; then
-  echo "deploy-pages: site unchanged"
-else
-  git -C "$worktree" commit --quiet -m "Deploy web version built from $source_rev"
-  echo "deploy-pages: committed $(git -C "$worktree" rev-parse --short HEAD) to pages"
-fi
 if [ "$push" = 1 ]; then
-  git push origin pages
+  git push --force origin pages
 fi
