@@ -28,9 +28,7 @@ trap 'rm -f "$index"' EXIT
 rm -f "$index"
 GIT_INDEX_FILE="$index" git --work-tree=web/dist add -A .
 tree=$(GIT_INDEX_FILE="$index" git write-tree)
-sign=""
-[ "$(git config --bool commit.gpgsign || true)" = true ] && sign=-S # commit-tree ignores the setting
-commit=$(git commit-tree $sign "$tree" -m "Deploy web version built from $source_rev")
+commit=$(git commit-tree "$tree" -m "Deploy web version built from $source_rev")
 git update-ref refs/heads/pages "$commit"
 echo "deploy-pages: pages -> $(git rev-parse --short "$commit") (built from $source_rev)"
 
