@@ -81,6 +81,7 @@ async function finish(file, pdf, stats) {
   url = URL.createObjectURL(new Blob([pdf], { type: "application/pdf" }));
   download.href = url;
   download.download = name;
+  $("outname").textContent = name;
   $("summary").textContent = `${stats.pages} page${stats.pages === 1 ? "" : "s"} · ${formatSize(pdf.byteLength)}`;
   result.hidden = false;
 
