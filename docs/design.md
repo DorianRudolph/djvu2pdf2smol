@@ -41,7 +41,7 @@ with born-digital files that repeat a font's glyphs in every dictionary.
 
 ### Decoder compatibility
 
-Rules found by testing jbig2dec, pdf.js, Apple CoreGraphics, poppler and MuPDF:
+Rules found by testing jbig2dec, pdf.js, Apple CoreGraphics, poppler, MuPDF and pdfium:
 
 * no end-of-page or end-of-file segments (PDF 32000-1 §7.4.7 forbids them in embedded
   streams; CoreGraphics rejects them);
@@ -51,7 +51,10 @@ Rules found by testing jbig2dec, pdf.js, Apple CoreGraphics, poppler and MuPDF:
   as ⌊log₂ n⌋ + 1 bits instead of ⌈log₂ n⌉, so one unused 1×1 symbol is added when
   needed;
 * refinement uses template 0 with the default adaptive pixels, and generic regions use
-  template 0 with the T.88 default adaptive pixels.
+  template 0 with the T.88 default adaptive pixels;
+* a refinement never has reference offset dx = 0, equal widths and |dy| ≥ the
+  reference's height: pdfium (Chrome; current Firefox renders such streams the same
+  way) resets dy to 0 in that case and decodes the rest of the region as garbage.
 
 ## Colour layers
 

@@ -77,6 +77,10 @@ pub fn encode_refinement(
 
 /// Offset (dx, dy) placing `parent` under `child` for refinement: centre alignment
 /// (as JB2 does) refined by the best match within ±1 pixel; ties keep the centre.
+///
+/// pdfium's fast refinement path (template 0, default AT pixels, dx = 0, equal widths)
+/// resets dy to 0 when |dy| ≥ the parent's height, so such offsets are never chosen;
+/// the window always has a usable one with dx ≠ 0.
 pub fn best_offset(child: &Bitmap, parent: &Bitmap) -> (i32, i32) {
     let cx = (child.width() as i32 - parent.width() as i32) / 2;
     let cy = (child.height() as i32 - parent.height() as i32) / 2;
@@ -89,17 +93,44 @@ pub fn best_offset(child: &Bitmap, parent: &Bitmap) -> (i32, i32) {
         }
         err
     };
-    let mut best = (mismatches(cx, cy), cx, cy);
+    let pdfium_safe = |dx: i32, dy: i32| {
+        dx != 0 || child.width() != parent.width() || dy.unsigned_abs() < parent.height()
+    };
+    let mut best = pdfium_safe(cx, cy).then(|| (mismatches(cx, cy), cx, cy));
     for dy in cy - 1..=cy + 1 {
         for dx in cx - 1..=cx + 1 {
-            if (dx, dy) == (cx, cy) {
+            if (dx, dy) == (cx, cy) || !pdfium_safe(dx, dy) {
                 continue;
             }
             let e = mismatches(dx, dy);
-            if e < best.0 {
-                best = (e, dx, dy);
+            if best.is_none_or(|b| e < b.0) {
+                best = Some((e, dx, dy));
             }
         }
     }
-    (best.1, best.2)
+    let (_, dx, dy) = best.expect("offsets with dx != 0 are always usable");
+    (dx, dy)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn best_offset_avoids_pdfium_dy_reset() {
+        // a 16x1 bar refined into a 16x2 glyph whose lower row matches it: the best
+        // match is (0, 1), which pdfium decodes as (0, 0)
+        let parent = Bitmap::from_fn(16, 1, |_, _| true);
+        let child = Bitmap::from_fn(16, 2, |x, y| {
+            y == 1 && x != 2 && x != 4 || y == 0 && (2..5).contains(&x)
+        });
+        let (dx, dy) = best_offset(&child, &parent);
+        assert!(
+            dx != 0 || dy.unsigned_abs() < parent.height(),
+            "({dx}, {dy})"
+        );
+        // unaffected when the reference is tall enough
+        let parent = Bitmap::from_fn(16, 2, |_, y| y == 1);
+        assert_eq!(best_offset(&child, &parent), (0, 0));
+    }
 }
