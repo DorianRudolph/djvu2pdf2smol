@@ -1,0 +1,164 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1d1d1f;
+  --muted: #6e6e73;
+  --border: #d2d2d7;
+  --accent: #0a62d0;
+  --accent-hover: #0853b3;
+  --accent-fg: #ffffff;
+  --well: #f2f2f4;
+  --error: #b3261e;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161618;
+    --fg: #f2f2f4;
+    --muted: #a1a1a6;
+    --border: #3a3a3e;
+    --accent: #4c9bff;
+    --accent-hover: #6aacff;
+    --accent-fg: #0b0b0c;
+    --well: #222225;
+    --error: #ff8a80;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161618;
+  --fg: #f2f2f4;
+  --muted: #a1a1a6;
+  --border: #3a3a3e;
+  --accent: #4c9bff;
+  --accent-hover: #6aacff;
+  --accent-fg: #0b0b0c;
+  --well: #222225;
+  --error: #ff8a80;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+[hidden] { display: none !important; }
+
+main { max-width: 860px; margin: 0 auto; padding: 32px 16px 48px; }
+h1 { font-size: 1.5rem; font-weight: 600; line-height: 1.25; margin: 0; }
+header p { margin: 4px 0 24px; }
+.muted { color: var(--muted); }
+
+/* links: one colour in every state (no visited/active colour changes) */
+a,
+a:visited,
+a:active {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { text-decoration-thickness: 2px; }
+a:focus-visible,
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+.drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  padding: 32px 16px;
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  text-align: center;
+}
+.drop.compact { padding: 14px 16px; }
+.drop.over { border-color: var(--accent); background: var(--well); }
+@media (pointer: coarse) { .hint { display: none; } }
+
+button,
+a.button,
+a.button:visited,
+a.button:active {
+  appearance: none;
+  display: inline-block;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 18px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.5;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+button:hover,
+a.button:hover { background: var(--accent-hover); }
+
+#status, #result, #error { margin-top: 24px; }
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+#name, .filename { overflow-wrap: anywhere; min-width: 0; }
+.filename { flex: 1 1 240px; }
+progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--well);
+  accent-color: var(--accent);
+}
+progress::-webkit-progress-bar { background: var(--well); border-radius: 3px; }
+progress::-webkit-progress-value { background: var(--accent); border-radius: 3px; }
+progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
+#error { color: var(--error); overflow-wrap: anywhere; }
+
+/* the pdf.js viewer app */
+#preview {
+  display: block;
+  width: 100%;
+  height: 80vh;
+  height: 80dvh;
+  margin-top: 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+footer {
+  margin-top: 56px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* legal and licenses pages */
+.legal .back { margin: 0 0 32px; font-size: 0.875rem; color: var(--muted); }
+.legal h1 { margin-bottom: 20px; }
+.legal h2 { font-size: 1.125rem; font-weight: 600; margin: 40px 0 12px; }
+.legal p { margin: 0 0 16px; }
+.licenses-overview { margin: 0 0 16px; padding-left: 20px; }
+.license h3 { font-size: 1rem; font-weight: 600; margin: 32px 0 4px; }
+.license .used-by { font-size: 0.875rem; color: var(--muted); overflow-wrap: anywhere; }
+.license pre {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  background: var(--well);
+  border-radius: 8px;
+}
